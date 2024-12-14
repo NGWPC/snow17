@@ -184,6 +184,7 @@
     integer, intent(out) :: log_level
     ! character(20), intent(in) :: log_level_str
     character(len=*), intent(in) :: log_level_str
+    !CALL UPCASE(log_level_str)
 
     if (trim(log_level_str) == "INFO") then
       log_level = 20
@@ -247,12 +248,19 @@
     integer :: status
     logical :: exist
     integer :: log_level
+    character(8) :: this_log_level_str
 
     ! set the default log level
-    if (present(log_level_str)) then
-      call get_log_level(log_level_str, log_level)
+    call get_environment_variable("snow-17_ll", this_log_level_str)
+    if (trim(adjustl(this_log_level_str)) == "") then
+      print*, "Log level not found in environment variable, will use default log level"
+    else 
+      print*, "Log level found in environment : " //this_log_level_str       
+      call get_log_level(trim(adjustl(this_log_level_str)), log_level)
       default_log_level = log_level
-    end if
+    end if  
+
+    print*, "Default log level :", default_log_level  
 
     if(len_trim(log_file_name) == 0) then
       call get_log_file_name()
