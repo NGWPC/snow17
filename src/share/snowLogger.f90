@@ -267,7 +267,7 @@
     end if
 
     print *, 'log file name: ' // log_file_name
-    inquire(file=log_file_name, exist=exist)
+    !inquire(file=log_file_name, exist=exist)
     !if (exist) then
     !        print *, 'log file already exists'
     !end if
