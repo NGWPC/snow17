@@ -1170,6 +1170,15 @@ contains
             deallocate(this%model%serialization_buffer)
          end if
          bmi_status = BMI_SUCCESS
+      case("reset_time")
+         call reset_model_time(this%model, exec_status)
+         if (exec_status == 0) then
+            bmi_status = BMI_SUCCESS
+            call write_log("Time variables reset successfully for state restoring", LOG_LEVEL_DEBUG)
+         else
+            bmi_status = BMI_FAILURE
+            call write_log(" Failed to reset time variables for state restoring", LOG_LEVEL_FATAL) 
+         end if
       case default
        bmi_status = BMI_FAILURE
        call write_log("snow17_set_int - " // name // " not found.", LOG_LEVEL_SEVERE)

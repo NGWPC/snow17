@@ -256,6 +256,17 @@ contains
 
   end subroutine cleanup
 
+  SUBROUTINE reset_model_time(model, exec_status)
+    type(snow17_type), intent(inout) :: model
+    integer(kind=int64), intent(out) :: exec_status
+    exec_status = 1
+    ! reset time variables to the beginning
+    model%runinfo%curr_datetime  = model%runinfo%start_datetime ! start the model with nowdate = startdate
+    model%runinfo%itime          = 1                    ! initialize the time loop counter at 1
+    model%runinfo%time_dbl       = 0.d0                 ! start model run at t = 0.0  
+    exec_status = 0
+  END SUBROUTINE reset_model_time
+  
   SUBROUTINE new_serialization_request (model, exec_status)
     type(snow17_type), intent(inout) :: model
     integer(kind=int64) :: nh !counter for HRUs
