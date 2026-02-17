@@ -20,6 +20,7 @@ module runModule
     type(parameters_type) :: parameters
     type(forcing_type)    :: forcing
     type(modelvar_type)   :: modelvar
+    integer               :: serialization_size
     byte, dimension(:), allocatable :: serialization_buffer
   end type snow17_type
 
@@ -277,6 +278,8 @@ contains
     class(mp_arr_type), allocatable :: mp_cs_arr
     byte, dimension(:), allocatable :: serialization_buffer
     integer(kind=int64), intent(out) :: exec_status
+    integer :: ser_size
+    byte, dimension(4) :: byte_size
 
     mp = msgpack()
     mp_cs_arr = mp_arr_type(model%runinfo%n_hrus)
@@ -303,7 +306,15 @@ contains
         exec_status = 1
     else
         exec_status = 0
-        model%serialization_buffer = serialization_buffer
+        ! add serialization size at beginning of data as header
+        ser_size = size(serialization_buffer)
+        if (allocated(model%serialization_buffer)) then
+          deallocate(model%serialization_buffer)
+        end if
+        allocate(model%serialization_buffer(ser_size + 4))
+        byte_size = transfer(ser_size, byte_size, size=4)
+        model%serialization_buffer(1:4) = byte_size(1:4)
+        model%serialization_buffer(5:) = serialization_buffer
         call write_log("Serialization using messagepack successful!", LOG_LEVEL_DEBUG)
     end if
   END SUBROUTINE new_serialization_request
@@ -325,8 +336,9 @@ contains
     exec_status = 0
     mp = msgpack()
     !convert integer(4) to integer(1) for messagepack
-    allocate(serialized_data_1b(size(serialized_data, 1, int64)*4_int64))
-    serialized_data_1b = transfer(serialized_data, serialized_data_1b) 
+    ! read the size of the data from the first 4 bytes
+    allocate(serialized_data_1b(serialized_data(1)))
+    serialized_data_1b = transfer(serialized_data(2:), serialized_data_1b, size=serialized_data(1)) 
     call mp%unpack(serialized_data_1b, mpv)
     if (.NOT. is_arr(mpv)) then
       call write_log("Deserialized data structure is not a messagepack array. Error: " // mp%error_message, LOG_LEVEL_FATAL)  

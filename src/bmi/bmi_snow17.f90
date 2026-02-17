@@ -581,8 +581,8 @@ contains
     character (len=*), intent(in) :: name
     character (len=*), intent(out) :: type
     integer :: bmi_status
-    character(len=BMI_MAX_TYPE_NAME) :: ser_create = "uint64" !pads spaces upto 2048.
-    character(len=BMI_MAX_TYPE_NAME) :: ser_size = "uint64" !pads spaces upto 2048
+    character(len=BMI_MAX_TYPE_NAME) :: ser_create = "int" !pads spaces upto 2048.
+    character(len=BMI_MAX_TYPE_NAME) :: ser_size = "int" !pads spaces upto 2048
     character(len=BMI_MAX_TYPE_NAME) :: ser_state = "character" !pads spaces upto 2048
     character(len=BMI_MAX_TYPE_NAME) :: ser_free = "int" !pads spaces upto 2048
 
@@ -615,6 +615,9 @@ contains
        bmi_status = BMI_SUCCESS
     case ('serialization_free')
        type = ser_free
+       bmi_status = BMI_SUCCESS
+    case ("reset_time")
+       type = "double"
        bmi_status = BMI_SUCCESS
     case default
        type = "-"
@@ -780,6 +783,11 @@ contains
     case("adc11")
        size = sizeof(this%model%parameters%adc(11,:))
        bmi_status = BMI_SUCCESS
+    case("serialization_size", "serialization_create", "serialization_free", "reset_time")
+       bmi_status = snow17_var_nbytes(this, name, size)
+    case("serialization_state")
+       size = 1
+       bmi_status = BMI_SUCCESS
     case default
        size = -1
        bmi_status = BMI_FAILURE
@@ -794,9 +802,13 @@ contains
     integer, intent(out) :: nbytes
     integer :: bmi_status
     integer :: s1, s2, s3, grid, grid_size, item_size
+    double precision :: d
     
     if (name == "serialization_create" .or. name == "serialization_size") then
-      nbytes = storage_size(0_int64)/8 !returns size in bits. So, divide by 8 for bytes.
+      nbytes = storage_size(0_int32)/8 !returns size in bits. So, divide by 8 for bytes.
+      bmi_status = BMI_SUCCESS
+    else if (name == "reset_time") then
+      nbytes = storage_size(d) / 8
       bmi_status = BMI_SUCCESS
     else if (name == "serialization_state") then
       if(.not.allocated(this%model%serialization_buffer) .or. size(this%model%serialization_buffer) == 0) then
@@ -854,10 +866,23 @@ contains
 !        bmi_status = BMI_SUCCESS
     case("serialization_size")
         if(.not.allocated(this%model%serialization_buffer) .or. size(this%model%serialization_buffer) == 0) then
+            if (this%model%serialization_size > 0) then
+               dest = this%model%serialization_size
+               bmi_status = BMI_SUCCESS
+            else
+               call write_log("Serialization not set yet!", LOG_LEVEL_WARNING)
+               bmi_status = BMI_FAILURE
+            end if
+        else
+            dest = size(this%model%serialization_buffer)
+            bmi_status = BMI_SUCCESS
+         end if
+    case("serialization_state")
+        if(.not.allocated(this%model%serialization_buffer) .or. size(this%model%serialization_buffer) == 0) then
             call write_log("Serialization not set yet!", LOG_LEVEL_WARNING)
             bmi_status = BMI_FAILURE
         else
-            dest = size(this%model%serialization_buffer,KIND=int64)
+            dest = this%model%serialization_buffer
             bmi_status = BMI_SUCCESS
          end if
     case default
@@ -1033,9 +1058,6 @@ contains
  !==================== UPDATE IMPLEMENTATION IF NECESSARY FOR INTEGER VARS =================
 
      select case(name)
-     case("serialization_state")
-          dest_ptr = this%model%serialization_buffer
-          bmi_status = BMI_SUCCESS
      case default
         bmi_status = BMI_FAILURE
         call write_log("snow17_get_ptr_int - " // name // " not found.", LOG_LEVEL_SEVERE)
@@ -1156,6 +1178,7 @@ contains
             bmi_status = BMI_FAILURE
             call write_log(" Failed to create serialized data for state saving", LOG_LEVEL_FATAL) 
          end if
+         this%model%serialization_size = -1
       case("serialization_state")
          call deserialize_mp_buffer(this%model,src, exec_status)
          if (exec_status == 0) then
@@ -1165,20 +1188,16 @@ contains
             bmi_status = BMI_FAILURE
             call write_log(" Failed to deserialize state saving data", LOG_LEVEL_FATAL) 
          end if
+         this%model%serialization_size = -1
       case("serialization_free")
          if(allocated(this%model%serialization_buffer)) then
             deallocate(this%model%serialization_buffer)
          end if
          bmi_status = BMI_SUCCESS
-      case("reset_time")
-         call reset_model_time(this%model, exec_status)
-         if (exec_status == 0) then
-            bmi_status = BMI_SUCCESS
-            call write_log("Time variables reset successfully for state restoring", LOG_LEVEL_DEBUG)
-         else
-            bmi_status = BMI_FAILURE
-            call write_log(" Failed to reset time variables for state restoring", LOG_LEVEL_FATAL) 
-         end if
+         this%model%serialization_size = -1
+      case("serialization_size")
+         this%model%serialization_size = src(1)
+         bmi_status = BMI_SUCCESS
       case default
        bmi_status = BMI_FAILURE
        call write_log("snow17_set_int - " // name // " not found.", LOG_LEVEL_SEVERE)
@@ -1309,10 +1328,20 @@ contains
     character (len=*), intent(in) :: name
     double precision, intent(in) :: src(:)
     integer :: bmi_status
+    integer(kind=int64) :: exec_status
 
     !==================== UPDATE IMPLEMENTATION IF NECESSARY FOR DOUBLE VARS =================
 
     select case(name)
+    case("reset_time")
+      call reset_model_time(this%model, exec_status)
+      if (exec_status == 0) then
+         bmi_status = BMI_SUCCESS
+         call write_log("Time variables reset successfully for state restoring", LOG_LEVEL_DEBUG)
+      else
+         bmi_status = BMI_FAILURE
+         call write_log(" Failed to reset time variables for state restoring", LOG_LEVEL_FATAL) 
+      end if
     case default
        bmi_status = BMI_FAILURE
        call write_log("snow17_set_double - " // name // " not found.", LOG_LEVEL_SEVERE)
