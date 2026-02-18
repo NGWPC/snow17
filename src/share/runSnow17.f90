@@ -416,29 +416,36 @@ contains
 
   FUNCTION transfer_values_to_mp (src) RESULT (dest)
 
-    real, allocatable, dimension(:), intent(in) :: src
-    class(mp_arr_type), allocatable :: dest
-    integer(kind=int64) :: index
+    real, dimension(:), intent(in) :: src
+    type(mp_arr_type) :: dest
+    integer :: lb, ub, index, arr_size
 
-        do index=LBOUND(src,1), UBOUND(src,1)
-            dest%values(index)%obj = mp_float_type(src(index))
-        end do
+    lb = LBOUND(src,1)
+    ub = UBOUND(src,1)
+    arr_size = size(src)
+    dest = mp_arr_type(arr_size)
+    
+    do index = lb, ub
+        dest%values(index)%obj = mp_float_type(src(index))
+    end do
 
   END FUNCTION transfer_values_to_mp
 
-  FUNCTION transfer_values_from_mp (src) RESULT (dest)
+  FUNCTION transfer_values_to_mp_int (src) RESULT (dest)
 
-    class(mp_arr_type), allocatable, intent(in) :: src
-    real, allocatable, dimension(:) :: dest
-    real(kind=real64) :: deserialized_val
-    integer(kind=int64) :: index
-    logical :: status
-        
-        do index=1, src%numelements()
-            call get_real(src%values(index)%obj, deserialized_val, status)
-            dest(index) = deserialized_val
-        end do
+    integer, dimension(:), intent(in) :: src
+    type(mp_arr_type) :: dest
+    integer :: lb, ub, index, arr_size
 
-  END FUNCTION transfer_values_from_mp
+    lb = LBOUND(src,1)
+    ub = UBOUND(src,1)
+    arr_size = size(src)
+    dest = mp_arr_type(arr_size)
+
+    do index = lb, ub
+        dest%values(index)%obj = mp_int_type(src(index))
+    end do
+
+  END FUNCTION transfer_values_to_mp_int
 
 end module runModule
