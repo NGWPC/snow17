@@ -431,21 +431,19 @@ contains
 
   END FUNCTION transfer_values_to_mp
 
-  FUNCTION transfer_values_to_mp_int (src) RESULT (dest)
+  FUNCTION transfer_values_from_mp (src) RESULT (dest)
 
-    integer, dimension(:), intent(in) :: src
-    type(mp_arr_type) :: dest
-    integer :: lb, ub, index, arr_size
+    class(mp_arr_type), allocatable, intent(in) :: src
+    real, allocatable, dimension(:) :: dest
+    real(kind=real64) :: deserialized_val
+    integer(kind=int64) :: index
+    logical :: status
+        
+        do index=1, src%numelements()
+            call get_real(src%values(index)%obj, deserialized_val, status)
+            dest(index) = deserialized_val
+        end do
 
-    lb = LBOUND(src,1)
-    ub = UBOUND(src,1)
-    arr_size = size(src)
-    dest = mp_arr_type(arr_size)
-
-    do index = lb, ub
-        dest%values(index)%obj = mp_int_type(src(index))
-    end do
-
-  END FUNCTION transfer_values_to_mp_int
+  END FUNCTION transfer_values_from_mp
 
 end module runModule
