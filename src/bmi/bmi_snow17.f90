@@ -796,7 +796,7 @@ contains
       bmi_status = snow17_var_itemsize(this, name, nbytes)
     else if (name == "serialization_state") then
       if(allocated(this%model%serialization_buffer) .and. size(this%model%serialization_buffer) > 0) then
-         nbytes = size(this%model%serialization_buffer)
+         nbytes = sizeof(this%model%serialization_buffer)
          bmi_status = BMI_SUCCESS
       else if (this%model%serialization_size > 0) then
          nbytes = this%model%serialization_size
