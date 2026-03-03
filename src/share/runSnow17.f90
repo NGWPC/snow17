@@ -438,9 +438,11 @@ contains
     integer(kind=int64) :: index
     logical :: status
     integer :: lb, ub
+    
+    lb = LBOUND(src%values, 1)
+    ub = UBOUND(src%values, 1)
+    allocate(dest(lb:ub))
 
-    lb = LBOUND(src,1)
-    ub = UBOUND(src,1)
     do index = lb, ub
       call get_real(src%values(index)%obj, deserialized_val, status)
       dest(index) = deserialized_val
