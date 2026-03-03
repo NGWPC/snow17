@@ -437,11 +437,14 @@ contains
     real(kind=real64) :: deserialized_val
     integer(kind=int64) :: index
     logical :: status
-        
-        do index=1, src%numelements()
-            call get_real(src%values(index)%obj, deserialized_val, status)
-            dest(index) = deserialized_val
-        end do
+    integer :: lb, ub
+
+    lb = LBOUND(src,1)
+    ub = UBOUND(src,1)
+    do index = lb, ub
+      call get_real(src%values(index)%obj, deserialized_val, status)
+      dest(index) = deserialized_val
+    end do
 
   END FUNCTION transfer_values_from_mp
 
