@@ -91,6 +91,17 @@ target_link_libraries( snow17bmi PUBLIC iso_c_bmi )
 
 set_target_properties(snow17bmi PROPERTIES VERSION ${PROJECT_VERSION})
 
+# --- EWTS (installed from nwm-ewts) ---
+find_package(ewts CONFIG REQUIRED)
+
+# Always use EWTS runtime logger for Fortran
+target_link_libraries(snow17bmi PRIVATE ewts::ewts_fortran)
+
+# Built with ngen bridge
+target_link_libraries(snow17bmi PRIVATE ewts::ewts_ngen_bridge)
+target_compile_definitions(snow17bmi PRIVATE EWTS_HAVE_NGEN_BRIDGE)
+
+
 include(GNUInstallDirs)
 
 install(TARGETS snow17bmi
