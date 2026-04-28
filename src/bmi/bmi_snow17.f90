@@ -637,7 +637,7 @@ contains
        units = "mm"
        bmi_status = BMI_SUCCESS
     case("raim")
-       units = "mm/s"
+       units = "mm"
        bmi_status = BMI_SUCCESS
     case("elev")
        units = "mm/s"
@@ -896,26 +896,26 @@ contains
        dest(1) = this%model%modelvar%snowh_comb
        bmi_status = BMI_SUCCESS
     case("raim")
-       dest(1) = this%model%modelvar%raim_comb
+       ! Snow-17 stores raim_comb as a rate in mm/s.
+       ! NWM ACSNOW/raim output expects timestep depth in mm.
+       dest(1) = this%model%modelvar%raim_comb * real(this%model%runinfo%dt)
 
        ! handle very small negative raim values that can occur due to round-off error or floating-point artifacts
        if (dest(1) < 0.0 .and. dest(1) > -1.0e-6) then
           dest(1) = 0.0
           write(msg, '(A,ES12.5,A)') "snow17_get_float - 'raim' is negligibly negative (", &
-                                 this%model%modelvar%raim_comb, " mm/s), set to 0.0"
+                             this%model%modelvar%raim_comb, " mm/s), set to 0.0 mm"
           call write_log(msg, LOG_LEVEL_INFO)
           bmi_status = BMI_SUCCESS
 
-       ! Throw an error if it’s truly negative
-       else if (this%model%modelvar%raim(1) <= -1.0e-6) then
-          write(msg,'(A,ES12.5,A)') "snow17_get_float - 'raim' is invalid (", this%model%modelvar%raim(1), \
-                                 " mm/s), must be non-negative."
+       else if (dest(1) <= -1.0e-6) then
+          write(msg,'(A,ES12.5,A)') "snow17_get_float - 'raim' is invalid (", &
+                             dest(1), " mm), must be non-negative."
           call write_log(msg, LOG_LEVEL_SEVERE)
           bmi_status = BMI_FAILURE
        else
           bmi_status = BMI_SUCCESS
        end if
-
     !case("hru_id")
     !   dest = [this%model%parameters%hru_id]
     !   bmi_status = BMI_SUCCESS
