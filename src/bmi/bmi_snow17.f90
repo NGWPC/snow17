@@ -631,7 +631,7 @@ contains
        units = "mm/s"
        bmi_status = BMI_SUCCESS
     case("sneqv")
-       units = "mm"
+       units = "kg m-2"
        bmi_status = BMI_SUCCESS
     case("snowh")
        units = "mm"
