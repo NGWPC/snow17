@@ -98,7 +98,7 @@ module bmi_snow17_module
 
   ! Exchange items
   integer, parameter :: input_item_count = 2
-  integer, parameter :: output_item_count = 4
+  integer, parameter :: output_item_count = 5
   character (len=BMI_MAX_VAR_NAME), target, &
        dimension(input_item_count) :: input_items
   character (len=BMI_MAX_VAR_NAME), target, &
@@ -159,6 +159,7 @@ contains
     output_items(2) = 'sneqv'        ! snow water equivalent (mm)
     output_items(3) = 'snowh'        ! snow height (mm)
     output_items(4) = 'raim'         ! precipitation (liquid) plus snowmelt (mm/s)
+    output_items(5) = 'raim_depth'   ! timestep-integrated raim depth (mm)
 
     names => output_items
     bmi_status = BMI_SUCCESS
@@ -286,7 +287,7 @@ contains
 
     select case(name)
     case('tair', 'precip', &                       ! input/output vars (can pass forc to output)
-         'precip_scf', 'sneqv', 'snowh', 'raim')   ! output vars
+         'precip_scf', 'sneqv', 'snowh', 'raim', 'raim_depth')   ! output vars
        grid = 0
        bmi_status = BMI_SUCCESS
     case('scf', 'mfmax', 'mfmin', 'uadj', 'si', &       ! parameters
@@ -584,7 +585,7 @@ contains
 
     select case(name)
     case('tair', 'precip', &                            ! input/output vars
-         'precip_scf', 'sneqv', 'snowh', 'raim')        ! output vars
+         'precip_scf', 'sneqv', 'snowh', 'raim', 'raim_depth')        ! output vars
        type = "real"
        bmi_status = BMI_SUCCESS
     case('scf', 'mfmax', 'mfmin', 'uadj', 'si', &       ! parameters
@@ -637,6 +638,9 @@ contains
        units = "mm"
        bmi_status = BMI_SUCCESS
     case("raim")
+       units = "mm/s"
+       bmi_status = BMI_SUCCESS
+    case("raim_depth")
        units = "mm"
        bmi_status = BMI_SUCCESS
     case("elev")
@@ -688,6 +692,9 @@ contains
        size = sizeof(this%model%modelvar%snowh_comb)
        bmi_status = BMI_SUCCESS
     case("raim")
+       size = sizeof(this%model%modelvar%raim_comb)
+       bmi_status = BMI_SUCCESS
+    case("raim_depth")
        size = sizeof(this%model%modelvar%raim_comb)
        bmi_status = BMI_SUCCESS
     case("hru_id")
@@ -896,26 +903,22 @@ contains
        dest(1) = this%model%modelvar%snowh_comb
        bmi_status = BMI_SUCCESS
     case("raim")
-       ! Snow-17 stores raim_comb as a rate in mm/s.
-       ! NWM ACSNOW/raim output expects timestep depth in mm.
-       dest(1) = this%model%modelvar%raim_comb * real(this%model%runinfo%dt)
+       dest(1) = this%model%modelvar%raim_comb
+       bmi_status = BMI_SUCCESS  
+    case("raim_depth")
+        ! Snow-17 stores raim_comb as a rate in mm/s.
+        ! NWM ACSNOW expects timestep depth in mm.
+        dest(1) = this%model%modelvar%raim_comb * real(this%model%runinfo%dt)
 
-       ! handle very small negative raim values that can occur due to round-off error or floating-point artifacts
-       if (dest(1) < 0.0 .and. dest(1) > -1.0e-6) then
-          dest(1) = 0.0
-          write(msg, '(A,ES12.5,A)') "snow17_get_float - 'raim' is negligibly negative (", &
-                             this%model%modelvar%raim_comb, " mm/s), set to 0.0 mm"
-          call write_log(msg, LOG_LEVEL_INFO)
-          bmi_status = BMI_SUCCESS
-
-       else if (dest(1) <= -1.0e-6) then
-          write(msg,'(A,ES12.5,A)') "snow17_get_float - 'raim' is invalid (", &
-                             dest(1), " mm), must be non-negative."
-          call write_log(msg, LOG_LEVEL_SEVERE)
-          bmi_status = BMI_FAILURE
-       else
-          bmi_status = BMI_SUCCESS
-       end if
+        if (dest(1) < 0.0 .and. dest(1) > -1.0e-6) then
+            dest(1) = 0.0
+            bmi_status = BMI_SUCCESS
+        else if (dest(1) <= -1.0e-6) then
+            call write_log("snow17_get_float - 'raim_depth' is invalid; must be non-negative.", LOG_LEVEL_SEVERE)
+            bmi_status = BMI_FAILURE
+        else
+            bmi_status = BMI_SUCCESS
+        end if
     !case("hru_id")
     !   dest = [this%model%parameters%hru_id]
     !   bmi_status = BMI_SUCCESS
