@@ -922,29 +922,30 @@ contains
        else
           bmi_status = BMI_SUCCESS
        end if
+
     case("raim_depth")
         ! Snow-17 stores raim_comb as a rate in mm/s.
         ! NWM ACSNOW expects timestep-integrated depth in mm.
         dest(1) = this%model%modelvar%raim_comb * real(this%model%runinfo%dt)
 
-        ! Handle very small negative values caused by round-off.
-        if (dest(1) < 0.0 .and. dest(1) > -1.0e-6) then
+        ! Match original raim behavior: judge small negative noise using the rate value.
+        if (this%model%modelvar%raim_comb < 0.0 .and. this%model%modelvar%raim_comb > -1.0e-6) then
             dest(1) = 0.0
-            write(msg, '(A,ES12.5,A)') "snow17_get_float - 'raim_depth' is negligibly negative (", &
+            write(msg, '(A,ES12.5,A)') "snow17_get_float - 'raim_depth' is negligibly negative from raim rate (", &
                                     this%model%modelvar%raim_comb, " mm/s), set to 0.0 mm"
             call write_log(msg, LOG_LEVEL_INFO)
             bmi_status = BMI_SUCCESS
 
-        ! Throw an error if truly negative after conversion.
-        else if (dest(1) <= -1.0e-6) then
-            write(msg, '(A,ES12.5,A)') "snow17_get_float - 'raim_depth' is invalid (", &
-                                    dest(1), " mm), must be non-negative."
+        else if (this%model%modelvar%raim_comb <= -1.0e-6) then
+            write(msg, '(A,ES12.5,A)') "snow17_get_float - 'raim_depth' is invalid from raim rate (", &
+                                    this%model%modelvar%raim_comb, " mm/s), must be non-negative."
             call write_log(msg, LOG_LEVEL_SEVERE)
             bmi_status = BMI_FAILURE
 
         else
             bmi_status = BMI_SUCCESS
         end if
+
     !case("hru_id")
     !   dest = [this%model%parameters%hru_id]
     !   bmi_status = BMI_SUCCESS
