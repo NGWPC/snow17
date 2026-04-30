@@ -98,7 +98,7 @@ module bmi_snow17_module
 
   ! Exchange items
   integer, parameter :: input_item_count = 2
-  integer, parameter :: output_item_count = 5
+  integer, parameter :: output_item_count = 6
   character (len=BMI_MAX_VAR_NAME), target, &
        dimension(input_item_count) :: input_items
   character (len=BMI_MAX_VAR_NAME), target, &
@@ -160,6 +160,7 @@ contains
     output_items(3) = 'snowh'        ! snow height (mm)
     output_items(4) = 'raim'         ! precipitation (liquid) plus snowmelt (mm/s)
     output_items(5) = 'raim_depth'   ! timestep-integrated raim depth (mm)
+    output_items(6) = 'sneqv_kg_m2'  ! NWM-facing SNEQV mass per area (kg m-2)
 
     names => output_items
     bmi_status = BMI_SUCCESS
@@ -287,7 +288,7 @@ contains
 
     select case(name)
     case('tair', 'precip', &                       ! input/output vars (can pass forc to output)
-         'precip_scf', 'sneqv', 'snowh', 'raim', 'raim_depth')   ! output vars
+         'precip_scf', 'sneqv', 'snowh', 'raim', 'raim_depth', 'sneqv_kg_m2')   ! output vars
        grid = 0
        bmi_status = BMI_SUCCESS
     case('scf', 'mfmax', 'mfmin', 'uadj', 'si', &       ! parameters
@@ -585,7 +586,7 @@ contains
 
     select case(name)
     case('tair', 'precip', &                            ! input/output vars
-         'precip_scf', 'sneqv', 'snowh', 'raim', 'raim_depth')        ! output vars
+         'precip_scf', 'sneqv', 'snowh', 'raim', 'raim_depth', 'sneqv_kg_m2')        ! output vars
        type = "real"
        bmi_status = BMI_SUCCESS
     case('scf', 'mfmax', 'mfmin', 'uadj', 'si', &       ! parameters
@@ -632,8 +633,11 @@ contains
        units = "mm/s"
        bmi_status = BMI_SUCCESS
     case("sneqv")
-       units = "kg m-2"
+       units = "mm"
        bmi_status = BMI_SUCCESS
+    case("sneqv_kg_m2")
+       units = "kg m-2"
+       bmi_status = BMI_SUCCESS   
     case("snowh")
        units = "mm"
        bmi_status = BMI_SUCCESS
@@ -686,6 +690,9 @@ contains
        size = sizeof(this%model%forcing%precip_scf_comb)
        bmi_status = BMI_SUCCESS
     case("sneqv")
+       size = sizeof(this%model%modelvar%sneqv_comb)
+       bmi_status = BMI_SUCCESS
+    case("sneqv_kg_m2")
        size = sizeof(this%model%modelvar%sneqv_comb)
        bmi_status = BMI_SUCCESS
     case("snowh")
@@ -897,6 +904,11 @@ contains
        dest(1) = this%model%forcing%precip_scf_comb
        bmi_status = BMI_SUCCESS
     case("sneqv")
+       dest(1) = this%model%modelvar%sneqv_comb
+       bmi_status = BMI_SUCCESS
+    case("sneqv_kg_m2")
+       ! Snow-17 stores sneqv_comb as mm water-equivalent depth.
+       ! NWM expects kg m-2. Numerically, 1 mm water = 1 kg m-2.
        dest(1) = this%model%modelvar%sneqv_comb
        bmi_status = BMI_SUCCESS
     case("snowh")
