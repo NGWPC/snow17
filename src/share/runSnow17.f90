@@ -20,7 +20,8 @@ module runModule
     type(parameters_type) :: parameters
     type(forcing_type)    :: forcing
     type(modelvar_type)   :: modelvar
-    byte, dimension(:), allocatable :: serialization_buffer
+    integer               :: serialization_size
+    integer, dimension(:), allocatable :: serialization_buffer
   end type snow17_type
 
 contains
@@ -256,6 +257,17 @@ contains
 
   end subroutine cleanup
 
+  SUBROUTINE reset_model_time(model, exec_status)
+    type(snow17_type), intent(inout) :: model
+    integer(kind=int64), intent(out) :: exec_status
+    exec_status = 1
+    ! reset time variables to the beginning
+    model%runinfo%curr_datetime  = model%runinfo%start_datetime ! start the model with nowdate = startdate
+    model%runinfo%itime          = 1                    ! initialize the time loop counter at 1
+    model%runinfo%time_dbl       = 0.d0                 ! start model run at t = 0.0  
+    exec_status = 0
+  END SUBROUTINE reset_model_time
+  
   SUBROUTINE new_serialization_request (model, exec_status)
     type(snow17_type), intent(inout) :: model
     integer(kind=int64) :: nh !counter for HRUs
@@ -266,6 +278,7 @@ contains
     class(mp_arr_type), allocatable :: mp_cs_arr
     byte, dimension(:), allocatable :: serialization_buffer
     integer(kind=int64), intent(out) :: exec_status
+    integer :: ser_size, ser_ints
 
     mp = msgpack()
     mp_cs_arr = mp_arr_type(model%runinfo%n_hrus)
@@ -292,7 +305,15 @@ contains
         exec_status = 1
     else
         exec_status = 0
-        model%serialization_buffer = serialization_buffer
+        ! add serialization size at beginning of data as header
+        if (allocated(model%serialization_buffer)) then
+          deallocate(model%serialization_buffer)
+        end if
+        ser_size = size(serialization_buffer)
+        ser_ints = CEILING(real(ser_size) / sizeof(ser_size))
+        allocate(model%serialization_buffer(ser_ints + 1))
+        model%serialization_buffer(1) = ser_size
+        model%serialization_buffer(2:) = transfer(serialization_buffer, model%serialization_buffer(2:))
         call write_log("Serialization using messagepack successful!", LOG_LEVEL_DEBUG)
     end if
   END SUBROUTINE new_serialization_request
@@ -314,8 +335,9 @@ contains
     exec_status = 0
     mp = msgpack()
     !convert integer(4) to integer(1) for messagepack
-    allocate(serialized_data_1b(size(serialized_data, 1, int64)*4_int64))
-    serialized_data_1b = transfer(serialized_data, serialized_data_1b) 
+    ! read the size of the data from the first 4 bytes
+    allocate(serialized_data_1b(serialized_data(1)))
+    serialized_data_1b = transfer(serialized_data(2:), serialized_data_1b, size=serialized_data(1)) 
     call mp%unpack(serialized_data_1b, mpv)
     if (.NOT. is_arr(mpv)) then
       call write_log("Deserialized data structure is not a messagepack array. Error: " // mp%error_message, LOG_LEVEL_FATAL)  
@@ -393,13 +415,18 @@ contains
 
   FUNCTION transfer_values_to_mp (src) RESULT (dest)
 
-    real, allocatable, dimension(:), intent(in) :: src
-    class(mp_arr_type), allocatable :: dest
-    integer(kind=int64) :: index
+    real, dimension(:), intent(in) :: src
+    type(mp_arr_type) :: dest
+    integer :: lb, ub, index, arr_size
 
-        do index=LBOUND(src,1), UBOUND(src,1)
-            dest%values(index)%obj = mp_float_type(src(index))
-        end do
+    lb = LBOUND(src,1)
+    ub = UBOUND(src,1)
+    arr_size = size(src)
+    dest = mp_arr_type(arr_size)
+    
+    do index = lb, ub
+        dest%values(index)%obj = mp_float_type(src(index))
+    end do
 
   END FUNCTION transfer_values_to_mp
 
@@ -410,11 +437,16 @@ contains
     real(kind=real64) :: deserialized_val
     integer(kind=int64) :: index
     logical :: status
-        
-        do index=1, src%numelements()
-            call get_real(src%values(index)%obj, deserialized_val, status)
-            dest(index) = deserialized_val
-        end do
+    integer :: lb, ub
+    
+    lb = LBOUND(src%values, 1)
+    ub = UBOUND(src%values, 1)
+    allocate(dest(lb:ub))
+
+    do index = lb, ub
+      call get_real(src%values(index)%obj, deserialized_val, status)
+      dest(index) = deserialized_val
+    end do
 
   END FUNCTION transfer_values_from_mp
 
