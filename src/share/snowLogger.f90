@@ -22,7 +22,15 @@ module snow_log_module
   use logger, only: ewts_write_log_module => write_log_module, &
                     ewts_is_logger_enabled_module => is_logger_enabled_module, &
                     ewts_get_log_level_module => get_log_level_module, &
-                    ewts_logger_init_module => logger_init_module
+                    ewts_logger_init_module => logger_init_module, &
+                    EWTS_NOTSET, &
+                    EWTS_DEBUG, &
+                    EWTS_PERFORM, &
+                    EWTS_INFO, &
+                    EWTS_WARNING, &
+                    EWTS_SEVERE , &
+                    EWTS_FATAL, &
+                    EWTS_STATUS
   use ewts_module_constants, only: EWTS_ID_SNOW_17
 #else
   use, intrinsic :: iso_c_binding, only: c_long, c_int, c_ptr, c_null_ptr, c_f_pointer, c_associated
@@ -31,6 +39,16 @@ module snow_log_module
   implicit none
   private
 
+#ifdef SNOW17_USE_EWTS
+  integer, parameter, public :: NOTSET            = EWTS_NOTSET
+  integer, parameter, public :: LOG_LEVEL_DEBUG   = EWTS_DEBUG
+  integer, parameter, public :: LOG_LEVEL_PERFORM = EWTS_PERFORM
+  integer, parameter, public :: LOG_LEVEL_INFO    = EWTS_INFO
+  integer, parameter, public :: LOG_LEVEL_WARNING = EWTS_WARNING
+  integer, parameter, public :: LOG_LEVEL_SEVERE  = EWTS_SEVERE
+  integer, parameter, public :: LOG_LEVEL_FATAL   = EWTS_FATAL
+  integer, parameter, public :: LOG_LEVEL_STATUS  = EWTS_STATUS
+#else
   integer, parameter, public :: NOTSET            = 0
   integer, parameter, public :: LOG_LEVEL_DEBUG   = 10
   integer, parameter, public :: LOG_LEVEL_PERFORM = 15
@@ -39,7 +57,6 @@ module snow_log_module
   integer, parameter, public :: LOG_LEVEL_SEVERE  = 40
   integer, parameter, public :: LOG_LEVEL_FATAL   = 50
 
-#ifndef SNOW17_USE_EWTS
   logical, parameter :: SNOW17_FALLBACK_LOGGING_ENABLED = .true.
   integer, parameter :: SNOW17_FALLBACK_LOG_LEVEL = LOG_LEVEL_INFO
 #endif
