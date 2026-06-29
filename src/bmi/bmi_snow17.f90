@@ -172,12 +172,20 @@ contains
     character (len=*), intent(in) :: config_file
     integer :: bmi_status
 
+#ifdef SNOW17_USE_EWTS
+    call payload_status(PAYLOAD_INITTING, 0.1d0, "", LOG_MODULE_ID)
+#endif
+
     if (len(config_file) > 0) then
        call initialize_from_file(this%model, config_file)
     !else
        !call initialize_from_defaults(this%model)
-     end if
-     call write_log("Initialization Done!", LOG_LEVEL_INFO)
+    end if
+    call write_log("Initialization Done!", LOG_LEVEL_INFO)
+#ifdef SNOW17_USE_EWTS
+    call payload_status(PAYLOAD_INITTED, 0.2d0, "", LOG_MODULE_ID)
+#endif
+
     bmi_status = BMI_SUCCESS
   end function snow17_initialize
 
