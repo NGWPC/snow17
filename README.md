@@ -14,6 +14,8 @@ the [Next Generation Water Resources Modeling Framework](https://github.com/NOAA
 
 There are no current dependencies except for a Fortran-compatible compiler (e.g., GFortran)
 
+Serialization uses a modified version of [Fortran MessagePack](https://github.com/synthfi/fortran-messagepack).
+
 ## Installation
 
 To build and run Snow-17 with example data, check out the [INSTALL](INSTALL.md) document.
@@ -28,7 +30,6 @@ Run the included test case example -- see the [INSTALL](INSTALL.md) document.
 
 ## Known issues
 
-The restart capability has not been implemented, but will be shortly. 
 The software has so far only been tested with the GFortran compiler (on Cheyenne at NCAR)
 
 ## Getting help
